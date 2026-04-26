@@ -69,12 +69,12 @@ body {
   border-radius: 10px;
 }
 .header-logo span {
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 900;
   font-family: 'Courier New', Courier, monospace;
   color: #ffffff;
-  text-shadow: -2px 0 #ff0066, 2px 0 #00ff88;
-  letter-spacing: 1.5px;
+  text-shadow: -1px 0 #ff0066, 1px 0 #00ff88, 0 0 8px rgba(255,255,255,0.3);
+  letter-spacing: 2px;
   text-transform: uppercase;
   -webkit-text-fill-color: #ffffff;
 }
