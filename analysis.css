@@ -60,20 +60,23 @@ body {
 .header-logo {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 .header-logo-icon {
-  width: 28px;
-  height: 28px;
+  width: 44px;
+  height: 44px;
   flex-shrink: 0;
+  border-radius: 10px;
 }
 .header-logo span {
-  font-size: 18px;
-  font-weight: 700;
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  letter-spacing: -0.5px;
+  font-size: 17px;
+  font-weight: 900;
+  font-family: 'Courier New', Courier, monospace;
+  color: #ffffff;
+  text-shadow: -2px 0 #ff0066, 2px 0 #00ff88;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  -webkit-text-fill-color: #ffffff;
 }
 .header-time {
   font-size: 12px;
