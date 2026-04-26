@@ -86,7 +86,10 @@ async function startProtection() {
     const res = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image_base64: _b64 }),
+      body: JSON.stringify({
+          image_data: { original_base64: _b64, format: 'jpeg' },
+          parameters: { protection_algorithm: 'FGSM', epsilon: 0.03, target_detector: 'FaceNet_v1' },
+        }),
     });
     if (!res.ok) throw new Error();
     _response = await res.json();
@@ -165,7 +168,7 @@ function renderResult() {
   `;
   pairs.appendChild(pair);
 
-  try { sessionStorage.setItem('atmResponse', JSON.stringify(_response)); } catch (_) {}
+  try { sessionStorage.setItem('atmResponse', JSON.stringify({ ..._response, original_image_base64: _b64 })); } catch (_) {}
 
   btnProtect.hidden = true;
 }
