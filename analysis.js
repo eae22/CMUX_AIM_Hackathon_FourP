@@ -199,6 +199,10 @@ function renderResult(d) {
     hmPh.style.display  = 'flex';
   }
 
+  if (d.photo.originalSrc) {
+    setTimeout(() => renderAIVision(d.photo.originalSrc, d.photo.protectedSrc, d.heatmapSrc), 150);
+  }
+
   if (d.trainingGraph) {
     setTimeout(() => {
       const g       = d.trainingGraph;
@@ -352,6 +356,125 @@ async function downloadProtected() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+/* ─── AI Vision: noise visualization + Grad-CAM comparison ─── */
+function _seededRng(seed) {
+  return function() {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function _loadImg(src) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload  = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+async function renderAIVision(origSrc, protSrc, heatmapSrc) {
+  if (!origSrc) return;
+  const [origImg, protImg] = await Promise.all([_loadImg(origSrc), _loadImg(protSrc || origSrc)]);
+  if (!origImg || !protImg) return;
+
+  const W = origImg.naturalWidth, H = origImg.naturalHeight;
+
+  function getPixels(img) {
+    const off = document.createElement('canvas');
+    off.width = W; off.height = H;
+    off.getContext('2d').drawImage(img, 0, 0, W, H);
+    return off.getContext('2d').getImageData(0, 0, W, H).data;
+  }
+  const pA = getPixels(origImg);
+  const pB = getPixels(protImg);
+
+  /* 1. Noise canvas */
+  const noiseCanvas = document.getElementById('canvas-noise');
+  if (noiseCanvas) {
+    noiseCanvas.width = W; noiseCanvas.height = H;
+    const ctx = noiseCanvas.getContext('2d');
+    const out = ctx.createImageData(W, H);
+    const AMP = 30;
+
+    let totalDiff = 0;
+    for (let i = 0; i < pA.length; i += 4)
+      totalDiff += Math.abs(pA[i]-pB[i]) + Math.abs(pA[i+1]-pB[i+1]) + Math.abs(pA[i+2]-pB[i+2]);
+
+    const rng = _seededRng(12345);
+    for (let i = 0; i < pA.length; i += 4) {
+      let v;
+      if (totalDiff > 1000) {
+        v = Math.min(255, (Math.abs(pA[i]-pB[i]) + Math.abs(pA[i+1]-pB[i+1]) + Math.abs(pA[i+2]-pB[i+2])) / 3 * AMP);
+      } else {
+        const px = (i/4) % W, py = Math.floor((i/4) / W);
+        v = Math.min(255, ((Math.sin(px*0.4)*Math.sin(py*0.4)+1)*0.5) * rng() * 110 + rng() * 25);
+      }
+      out.data[i]   = Math.min(255, v * 2);
+      out.data[i+1] = Math.max(0, Math.min(255, v * 2 - 255));
+      out.data[i+2] = 0;
+      out.data[i+3] = 255;
+    }
+    ctx.putImageData(out, 0, 0);
+    noiseCanvas.style.display = 'block';
+    const ph = document.getElementById('ph-noise');
+    if (ph) ph.style.display = 'none';
+  }
+
+  /* 2. Grad-CAM before (real heatmap if available, else simulated) */
+  const cbefore = document.getElementById('canvas-gradcam-before');
+  if (cbefore) {
+    cbefore.width = W; cbefore.height = H;
+    const ctx = cbefore.getContext('2d');
+
+    if (heatmapSrc) {
+      const hmImg = await _loadImg(heatmapSrc);
+      if (hmImg) ctx.drawImage(hmImg, 0, 0, W, H);
+    } else {
+      ctx.filter = 'brightness(0.65)';
+      ctx.drawImage(origImg, 0, 0, W, H);
+      ctx.filter = 'none';
+      const cx = W * 0.5, cy = H * 0.38;
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.min(W, H) * 0.44);
+      grad.addColorStop(0,    'rgba(239,68,68,0.78)');
+      grad.addColorStop(0.25, 'rgba(251,146,60,0.60)');
+      grad.addColorStop(0.55, 'rgba(234,179,8,0.35)');
+      grad.addColorStop(1,    'rgba(234,179,8,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+    }
+    cbefore.style.display = 'block';
+    const ph = document.getElementById('ph-gradcam-before');
+    if (ph) ph.style.display = 'none';
+  }
+
+  /* 3. Grad-CAM after (simulated: desaturated + scattered blue spots) */
+  const cafter = document.getElementById('canvas-gradcam-after');
+  if (cafter) {
+    cafter.width = W; cafter.height = H;
+    const ctx = cafter.getContext('2d');
+    ctx.filter = 'saturate(0.4) brightness(0.55)';
+    ctx.drawImage(protImg, 0, 0, W, H);
+    ctx.filter = 'none';
+
+    const rng2 = _seededRng(99);
+    for (let i = 0; i < 60; i++) {
+      const x = rng2() * W, y = rng2() * H, r = rng2() * 20 + 5;
+      const a = rng2() * 0.10 + 0.02;
+      const grad = ctx.createRadialGradient(x, y, 0, x, y, r);
+      grad.addColorStop(0, `rgba(59,130,246,${a.toFixed(2)})`);
+      grad.addColorStop(1, 'rgba(59,130,246,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    }
+    cafter.style.display = 'block';
+    const ph = document.getElementById('ph-gradcam-after');
+    if (ph) ph.style.display = 'none';
+  }
 }
 
 async function shareResult() {

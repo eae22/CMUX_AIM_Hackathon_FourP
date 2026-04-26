@@ -161,6 +161,54 @@
     </div>
   </div>
 
+  <!-- AI Vision card -->
+  <div class="card" id="ai-vision-card">
+    <div class="vision-header">
+      <span class="card-label">AI 시선 시뮬레이션</span>
+      <span class="analysis-subtitle">AI가 이미지를 어떻게 인식하는지 시각화</span>
+    </div>
+    <div class="vision-body">
+
+      <div class="vision-section">
+        <div class="vision-section-title">🌊 적대적 노이즈 패턴</div>
+        <div class="vision-section-sub">사람 눈엔 안 보이지만 AI를 교란하는 신호 (×30 증폭)</div>
+        <div class="noise-canvas-wrap">
+          <canvas id="canvas-noise"></canvas>
+          <div class="vision-placeholder" id="ph-noise">
+            <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+            </svg>
+            <span>이미지 분석 후 표시됩니다</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="vision-divider"></div>
+
+      <div class="vision-section">
+        <div class="vision-section-title">👁 AI 주목 영역 비교 (Grad-CAM)</div>
+        <div class="vision-section-sub">붉을수록 AI가 얼굴로 강하게 인식한 부위예요</div>
+        <div class="gradcam-compare-grid">
+          <div class="gradcam-slot">
+            <div class="gradcam-img-wrap">
+              <canvas id="canvas-gradcam-before"></canvas>
+              <div class="vision-placeholder small" id="ph-gradcam-before"><span>보호 전</span></div>
+            </div>
+            <span class="gradcam-tag gradcam-tag-before">보호 전</span>
+          </div>
+          <div class="gradcam-slot">
+            <div class="gradcam-img-wrap">
+              <canvas id="canvas-gradcam-after"></canvas>
+              <div class="vision-placeholder small" id="ph-gradcam-after"><span>보호 후</span></div>
+            </div>
+            <span class="gradcam-tag gradcam-tag-after">보호 후</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
   <!-- Training graph card -->
   <div class="card" id="training-card">
     <div class="training-header">

@@ -510,6 +510,109 @@ canvas {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ─── AI Vision card ─── */
+.vision-header {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 16px 20px 14px;
+}
+.vision-body {
+  padding: 0 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.vision-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.vision-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+.vision-section-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-bottom: 2px;
+}
+.noise-canvas-wrap {
+  width: 100%;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60px;
+}
+.noise-canvas-wrap canvas {
+  width: 100%;
+  height: auto;
+  display: none;
+}
+.vision-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 20px;
+  text-align: center;
+}
+.vision-placeholder.small { padding: 14px 8px; }
+.vision-placeholder svg { opacity: 0.35; }
+.vision-divider {
+  height: 1px;
+  background: var(--border);
+}
+.gradcam-compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.gradcam-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.gradcam-img-wrap {
+  width: 100%;
+  background: var(--surface2);
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+}
+.gradcam-img-wrap canvas {
+  width: 100%;
+  height: auto;
+  display: none;
+}
+.gradcam-tag {
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+.gradcam-tag-before {
+  background: rgba(239,68,68,0.2);
+  color: #fca5a5;
+  border: 1px solid rgba(239,68,68,0.4);
+}
+.gradcam-tag-after {
+  background: rgba(34,197,94,0.2);
+  color: #86efac;
+  border: 1px solid rgba(34,197,94,0.4);
+}
+
 /* ─── Responsive tweaks ─── */
 @media (max-width: 360px) {
   .gauge-wrap { width: 100px; height: 100px; }
