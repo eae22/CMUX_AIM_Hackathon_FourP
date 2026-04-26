@@ -50,6 +50,20 @@
     justify-content: space-between;
     padding: 8px 0 4px;
   }
+  .btn-back {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: color 0.15s;
+  }
+  .btn-back:hover { color: var(--text); }
   .header-logo {
     font-size: 18px;
     font-weight: 700;
@@ -541,6 +555,18 @@
     border-radius: 50%;
     flex-shrink: 0;
   }
+  .training-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    padding: 10px 12px;
+    background: var(--surface2);
+    border-radius: 10px;
+  }
+  .training-desc strong {
+    color: var(--text);
+    font-weight: 700;
+  }
 
   /* ─── Loading spinner ─── */
   .loading-spinner {
@@ -584,6 +610,12 @@ const RESULT_DATA = {
 
   // Grad-CAM 히트맵
   heatmapSrc: "",
+
+  // 딥페이크 취약도
+  deepfakeVulnerability: {
+    original_score:  95.5,
+    protected_score: 4.2,
+  },
 
   // 학습 효율 그래프
   trainingGraph: {
@@ -639,6 +671,7 @@ const LEVEL_CONFIG = {
 
   <!-- Header -->
   <div class="header">
+    <button class="btn-back" onclick="location.href='index.html'">← 뒤로가기</button>
     <span class="header-logo">ShieldFace</span>
     <span class="header-time" id="analyzed-at"></span>
   </div>
@@ -647,63 +680,41 @@ const LEVEL_CONFIG = {
   <div class="card" id="compare-card">
     <div class="compare-header">
       <span class="card-label">사진 비교</span>
-      <span class="compare-hint">탭하여 사진 불러오기</span>
     </div>
     <div class="compare-grid">
 
       <!-- 원본 슬롯 -->
       <div class="compare-slot">
-        <label for="file-original" class="compare-label-wrap">
-          <div class="compare-img-wrap">
-            <img id="img-original" alt="원본 사진">
-            <div class="compare-placeholder" id="ph-original">
-              <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                <path d="M4 16l4-4a3 3 0 014 0l4 4M14 14l1.5-1.5a3 3 0 014 0L22 14M8 8h.01M2 6a2 2 0 012-2h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/>
-              </svg>
-              <span>원본 사진<br>탭하여 추가</span>
-            </div>
-            <div class="compare-tag-row">
-              <span class="compare-tag compare-tag-before">원본</span>
-              <span class="compare-upload-icon">
-                <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12l7-7 7 7"/></svg>
-              </span>
-            </div>
+        <div class="compare-img-wrap">
+          <img id="img-original" alt="원본 사진">
+          <div class="compare-placeholder" id="ph-original">
+            <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+              <path d="M4 16l4-4a3 3 0 014 0l4 4M14 14l1.5-1.5a3 3 0 014 0L22 14M8 8h.01M2 6a2 2 0 012-2h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/>
+            </svg>
+            <span>원본 사진</span>
           </div>
-        </label>
-        <input type="file" id="file-original" accept="image/*">
+          <div class="compare-tag-row">
+            <span class="compare-tag compare-tag-before">원본</span>
+          </div>
+        </div>
       </div>
 
       <!-- 보호본 슬롯 -->
       <div class="compare-slot">
-        <label for="file-protected" class="compare-label-wrap">
-          <div class="compare-img-wrap">
-            <img id="img-protected" alt="보호본 사진">
-            <div class="compare-placeholder" id="ph-protected">
-              <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-              </svg>
-              <span>보호본 사진<br>탭하여 추가</span>
-            </div>
-            <div class="compare-tag-row">
-              <span class="compare-tag compare-tag-after">보호본</span>
-              <span class="compare-upload-icon">
-                <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12l7-7 7 7"/></svg>
-              </span>
-            </div>
+        <div class="compare-img-wrap">
+          <img id="img-protected" alt="보호본 사진">
+          <div class="compare-placeholder" id="ph-protected">
+            <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            <span>보호본 사진</span>
           </div>
-        </label>
-        <input type="file" id="file-protected" accept="image/*">
+          <div class="compare-tag-row">
+            <span class="compare-tag compare-tag-after">보호본</span>
+          </div>
+        </div>
       </div>
 
-    </div>
-    <div class="compare-footer">
-      <span>육안으로 차이가 거의 없습니다</span>
-      <button class="btn-download" id="btn-download" onclick="downloadProtected()" disabled>
-        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-          <path d="M12 5v10M7 15l5 5 5-5M4 20h16"/>
-        </svg>
-        보호본 저장
-      </button>
     </div>
   </div>
 
@@ -834,6 +845,8 @@ const LEVEL_CONFIG = {
           <span class="legend-dot" style="background:#22c55e;"></span>보호본 학습
         </div>
       </div>
+      <div class="training-desc" id="desc-loss"></div>
+      <div class="training-desc" id="desc-acc"></div>
     </div>
   </div>
 
@@ -854,22 +867,6 @@ let _currentRequestId = null;
 
 (function init() {
   renderResult(RESULT_DATA);
-
-  // 원본 업로드 → 백엔드 자동 호출
-  document.getElementById('file-original').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    showSlot('original', URL.createObjectURL(file));
-    const reader = new FileReader();
-    reader.onload = ev => fetchProtection(ev.target.result);
-    reader.readAsDataURL(file);
-  });
-
-  // 보호본은 수동 업로드도 유지
-  document.getElementById('file-protected').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (file) showSlot('protected', URL.createObjectURL(file));
-  });
 })();
 
 /* ─── helpers ─── */
@@ -969,14 +966,47 @@ function renderResult(d) {
     hmPh.style.display  = 'flex';
   }
 
-  // 학습 효율 차트
+  // 학습 효율 차트 + 설명
   if (d.trainingGraph) {
     setTimeout(() => {
       const g = d.trainingGraph;
       drawChart('chart-loss', g.epochs, g.loss_original,     g.loss_protected,     1.0);
       drawChart('chart-acc',  g.epochs, g.accuracy_original, g.accuracy_protected, 1.0);
     }, 100);
+    renderTrainingDesc(d.trainingGraph, d.deepfakeVulnerability);
   }
+}
+
+/* ─── renderTrainingDesc: 차트 아래 동적 설명 ─── */
+function renderTrainingDesc(tg, vuln) {
+  if (!tg) return;
+  const avg = arr => arr.reduce((a, b) => a + b, 0) / arr.length;
+  const f   = n   => Number(n).toFixed(1);
+
+  const lossFirst    = tg.loss_original[0];
+  const lossLast     = tg.loss_original[tg.loss_original.length - 1];
+  const lossProtAvg  = avg(tg.loss_protected);
+  const lossReduct   = ((lossFirst - lossLast) / lossFirst * 100);
+
+  const accOrigLast  = avg([tg.accuracy_original[tg.accuracy_original.length - 1]]) * 100;
+  const accProtAvg   = avg(tg.accuracy_protected) * 100;
+
+  const lossEl = document.getElementById('desc-loss');
+  const accEl  = document.getElementById('desc-acc');
+
+  if (lossEl) lossEl.innerHTML =
+    `<strong>Loss</strong> — 원본은 ${f(lossFirst)}에서 ${f(lossLast)}로 ` +
+    `<strong>${f(lossReduct)}%</strong> 감소했어요. ` +
+    `보호본은 ${f(lossProtAvg)} 수준을 유지해 학습이 거의 진행되지 않았습니다.`;
+
+  let accText =
+    `<strong>Accuracy</strong> — 원본 학습 정확도가 <strong>${f(accOrigLast)}%</strong>까지 올랐지만, ` +
+    `보호본은 ${f(accProtAvg)}% 수준에 머물렀어요.`;
+  if (vuln) {
+    accText +=
+      ` 딥페이크 취약도도 ${f(vuln.original_score)}에서 <strong>${f(vuln.protected_score)}</strong>으로 낮아졌습니다.`;
+  }
+  if (accEl) accEl.innerHTML = accText;
 }
 
 /* ─── drawChart: canvas 라인 차트 ─── */
@@ -1056,14 +1086,13 @@ async function fetchProtection(imageB64) {
         originalSrc:  imageB64,
         protectedSrc: data.protection_result.protected_image_base64,
       },
-      heatmapSrc:    data.original_analysis.ai_perception.grad_cam_heatmap,
-      trainingGraph: data.simulation_metrics.training_efficiency_graph,
-      analyzedAt:    new Date().toLocaleString('ko-KR'),
+      heatmapSrc:            data.original_analysis.ai_perception.grad_cam_heatmap,
+      trainingGraph:         data.simulation_metrics.training_efficiency_graph,
+      deepfakeVulnerability: data.simulation_metrics.deepfake_vulnerability,
+      analyzedAt:            new Date().toLocaleString('ko-KR'),
       customHeadline: null,
       customDesc:     null,
     });
-
-    document.getElementById('btn-download').disabled = !_currentRequestId;
     setLoading(false);
   } catch (err) {
     setLoading(false, err.message);
@@ -1072,19 +1101,13 @@ async function fetchProtection(imageB64) {
 
 /* ─── setLoading: 로딩/에러 상태 표시 ─── */
 function setLoading(on, errMsg) {
-  const hint   = document.querySelector('.compare-hint');
-  const footer = document.querySelector('.compare-footer span');
-  const dlBtn  = document.getElementById('btn-download');
+  const hint  = document.querySelector('.compare-hint');
   if (on) {
-    hint.innerHTML   = '<span class="loading-spinner"></span> 분석 중…';
-    footer.textContent = '백엔드 처리 중…';
-    dlBtn.disabled   = true;
+    if (hint) hint.innerHTML = '<span class="loading-spinner"></span> 분석 중…';
   } else if (errMsg) {
-    hint.textContent   = '연결 실패 — 더미 데이터로 표시 중';
-    footer.innerHTML   = `<span style="color:var(--danger)">⚠ ${errMsg}</span>`;
+    if (hint) hint.textContent = `⚠ 연결 실패: ${errMsg}`;
   } else {
-    hint.textContent   = '탭하여 사진 불러오기';
-    footer.textContent = '육안으로 차이가 거의 없습니다';
+    if (hint) hint.textContent = '';
   }
 }
 
