@@ -6,7 +6,7 @@ from datetime import datetime
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from schemas import ProtectRequest, ProtectResponse
@@ -28,12 +28,6 @@ app.add_middleware(
 # 보호된 이미지 임시 저장소 (다운로드 엔드포인트용)
 _result_store: dict[str, ProtectResponse] = {}
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-
-@app.get("/", response_class=FileResponse)
-def root():
-    return "static/index.html"
 
 
 @app.get("/health")
@@ -106,3 +100,6 @@ def download_protected_image(request_id: str):
         media_type=mime,
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
