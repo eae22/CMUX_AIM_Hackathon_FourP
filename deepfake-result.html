@@ -445,6 +445,103 @@
   .btn-download:not(:disabled):hover  { opacity: 0.85; }
   .btn-download:not(:disabled):active { transform: scale(0.97); }
 
+  /* ─── Heatmap card ─── */
+  .heatmap-header {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 16px 20px 12px;
+  }
+  .heatmap-body {
+    padding: 0 20px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .heatmap-img-wrap {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background: var(--surface2);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .heatmap-img-wrap img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: none;
+  }
+  .heatmap-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+  .heatmap-placeholder svg { opacity: 0.35; }
+  .heatmap-caption {
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  /* ─── Training graph card ─── */
+  .training-header {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 16px 20px 14px;
+  }
+  .training-body {
+    padding: 0 20px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .chart-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .chart-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .chart-canvas-wrap {
+    background: var(--surface2);
+    border-radius: 10px;
+    overflow: hidden;
+    height: 100px;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100px;
+  }
+  .chart-legend {
+    display: flex;
+    gap: 16px;
+    margin-top: 2px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .legend-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
   /* ─── Loading spinner ─── */
   .loading-spinner {
     display: inline-block;
@@ -473,28 +570,31 @@
      ════════════════════════════ -->
 <script>
 const RESULT_DATA = {
-  // "safe" | "warn" | "danger"
   level: "safe",
+  protectionScore: 92,
 
-  // 0–100
-  protectionScore: 87,
+  // 얼굴 인식 신뢰도 (detection_confidence * 100)
+  similarityBefore: 99,   // original_analysis.detection_confidence
+  similarityAfter:  8,    // protection_result.detection_confidence
 
-  // comparison bar values (%)
-  similarityBefore: 98,
-  similarityAfter:  12,
-
-  // photo metadata (replace src with real URL or base64)
   photo: {
-    originalSrc:  "",   // empty → shows placeholder; set to data:image/... or URL
-    protectedSrc: "",   // empty → shows placeholder
-    filename: "profile_photo.jpg",
-    size: "2.4 MB"
+    originalSrc:  "",
+    protectedSrc: "",
   },
 
-  // timestamp
-  analyzedAt: "2026-04-26 · 14:32",
+  // Grad-CAM 히트맵
+  heatmapSrc: "",
 
-  // optional overrides per level (leave null to use defaults below)
+  // 학습 효율 그래프
+  trainingGraph: {
+    epochs:            [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    loss_original:     [0.85, 0.62, 0.41, 0.22, 0.12, 0.08, 0.05, 0.03, 0.02, 0.01],
+    loss_protected:    [0.88, 0.87, 0.89, 0.86, 0.91, 0.88, 0.89, 0.90, 0.87, 0.89],
+    accuracy_original: [0.45, 0.68, 0.79, 0.88, 0.94, 0.97, 0.98, 0.99, 0.99, 0.99],
+    accuracy_protected:[0.12, 0.11, 0.13, 0.10, 0.12, 0.11, 0.14, 0.12, 0.11, 0.13],
+  },
+
+  analyzedAt:     "2026-04-26 · 14:32",
   customHeadline: null,
   customDesc:     null
 };
@@ -650,15 +750,15 @@ const LEVEL_CONFIG = {
   <!-- Analysis card: graph + summary merged -->
   <div class="card analysis-card">
     <div class="card-header">
-      <span class="card-label">딥페이크 인식률 비교</span>
-      <span class="analysis-subtitle">숫자가 낮을수록 더 잘 보호된 거예요</span>
+      <span class="card-label">AI 얼굴 인식률</span>
+      <span class="analysis-subtitle">보호 후 AI가 얼굴을 거의 인식 못해요</span>
     </div>
     <div class="graph-body">
       <div class="bar-group">
         <div class="bar-label-row">
           <span class="bar-tag">
             <span class="bar-tag-dot" style="background:#ef4444;"></span>
-            원본
+            보호 전
           </span>
           <span class="bar-pct" id="bar-pct-before" style="color:#ef4444;"></span>
         </div>
@@ -670,7 +770,7 @@ const LEVEL_CONFIG = {
         <div class="bar-label-row">
           <span class="bar-tag">
             <span class="bar-tag-dot" style="background:#22c55e;"></span>
-            보호본
+            보호 후
           </span>
           <span class="bar-pct" id="bar-pct-after" style="color:#22c55e;"></span>
         </div>
@@ -684,6 +784,56 @@ const LEVEL_CONFIG = {
       <div class="ai-main" id="ai-headline"></div>
       <div class="ai-desc" id="ai-desc"></div>
       <div class="ai-tags" id="ai-tags"></div>
+    </div>
+  </div>
+
+  <!-- Heatmap card -->
+  <div class="card" id="heatmap-card">
+    <div class="heatmap-header">
+      <span class="card-label">AI 주목 영역 (Grad-CAM)</span>
+      <span class="analysis-subtitle">보호 전 AI가 집중한 얼굴 부위</span>
+    </div>
+    <div class="heatmap-body">
+      <div class="heatmap-img-wrap">
+        <img id="img-heatmap" alt="Grad-CAM heatmap">
+        <div class="heatmap-placeholder" id="ph-heatmap">
+          <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+          </svg>
+          <span>분석 후 표시됩니다</span>
+        </div>
+      </div>
+      <p class="heatmap-caption">붉은 영역일수록 AI가 얼굴로 강하게 인식한 부위예요. 보호 처리 후에는 이 신호가 사라집니다.</p>
+    </div>
+  </div>
+
+  <!-- Training graph card -->
+  <div class="card" id="training-card">
+    <div class="training-header">
+      <span class="card-label">딥페이크 학습 효율</span>
+      <span class="analysis-subtitle">보호 처리 시 AI 학습이 어떻게 막히는지</span>
+    </div>
+    <div class="training-body">
+      <div class="chart-group">
+        <span class="chart-title">Loss</span>
+        <div class="chart-canvas-wrap">
+          <canvas id="chart-loss"></canvas>
+        </div>
+      </div>
+      <div class="chart-group">
+        <span class="chart-title">Accuracy</span>
+        <div class="chart-canvas-wrap">
+          <canvas id="chart-acc"></canvas>
+        </div>
+      </div>
+      <div class="chart-legend">
+        <div class="legend-item">
+          <span class="legend-dot" style="background:#ef4444;"></span>원본 학습
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot" style="background:#22c55e;"></span>보호본 학습
+        </div>
+      </div>
     </div>
   </div>
 
@@ -806,13 +956,81 @@ function renderResult(d) {
     span.textContent = '#' + t;
     tagsEl.appendChild(span);
   });
+
+  // 히트맵
+  const hmImg = document.getElementById('img-heatmap');
+  const hmPh  = document.getElementById('ph-heatmap');
+  if (d.heatmapSrc) {
+    hmImg.src = d.heatmapSrc;
+    hmImg.style.display = 'block';
+    hmPh.style.display  = 'none';
+  } else {
+    hmImg.style.display = 'none';
+    hmPh.style.display  = 'flex';
+  }
+
+  // 학습 효율 차트
+  if (d.trainingGraph) {
+    setTimeout(() => {
+      const g = d.trainingGraph;
+      drawChart('chart-loss', g.epochs, g.loss_original,     g.loss_protected,     1.0);
+      drawChart('chart-acc',  g.epochs, g.accuracy_original, g.accuracy_protected, 1.0);
+    }, 100);
+  }
+}
+
+/* ─── drawChart: canvas 라인 차트 ─── */
+function drawChart(id, epochs, line1, line2, yMax) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  const wrap = canvas.parentElement;
+  canvas.width  = wrap.clientWidth  || 360;
+  canvas.height = wrap.clientHeight || 100;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const p = { t: 8, r: 10, b: 20, l: 28 };
+  const cW = W - p.l - p.r, cH = H - p.t - p.b;
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#242424';
+  ctx.fillRect(0, 0, W, H);
+
+  // 그리드
+  ctx.strokeStyle = '#2a2a2a';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = p.t + (cH / 4) * i;
+    ctx.beginPath(); ctx.moveTo(p.l, y); ctx.lineTo(p.l + cW, y); ctx.stroke();
+    ctx.fillStyle = '#666'; ctx.font = '9px sans-serif'; ctx.textAlign = 'right';
+    ctx.fillText((yMax * (4 - i) / 4).toFixed(1), p.l - 3, y + 3);
+  }
+
+  // X 레이블
+  ctx.fillStyle = '#666'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+  [0, Math.floor((epochs.length-1)/2), epochs.length-1].forEach(i => {
+    const x = p.l + (cW / (epochs.length - 1)) * i;
+    ctx.fillText(epochs[i], x, H - 4);
+  });
+
+  // 라인
+  function line(data, color) {
+    ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+    data.forEach((v, i) => {
+      const x = p.l + (cW / (data.length - 1)) * i;
+      const y = p.t + cH - Math.min(v / yMax, 1) * cH;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+  }
+  line(line1, '#ef4444');
+  line(line2, '#22c55e');
 }
 
 /* ─── fetchProtection: 원본 업로드 시 백엔드 호출 ─── */
 async function fetchProtection(imageB64) {
   setLoading(true);
   try {
-    const res = await fetch(`${API_BASE_URL}/api/protect`, {
+    const res = await fetch(`${API_BASE_URL}/analyze`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -823,23 +1041,26 @@ async function fetchProtection(imageB64) {
     if (!res.ok) throw new Error(`서버 오류 ${res.status}`);
     const data = await res.json();
 
-    const protectedScore = Math.round(
-      100 - data.simulation_metrics.deepfake_vulnerability.protected_score
-    );
     _currentRequestId = data.request_id;
+
+    const detBefore      = Math.round(data.original_analysis.detection_confidence * 100);
+    const detAfter       = Math.round(data.protection_result.detection_confidence * 100);
+    const protectedScore = Math.round((1 - data.protection_result.detection_confidence) * 100);
 
     renderResult({
       level:            protectedScore >= 70 ? 'safe' : protectedScore >= 40 ? 'warn' : 'danger',
       protectionScore:  protectedScore,
-      similarityBefore: Math.round(data.simulation_metrics.deepfake_vulnerability.original_score),
-      similarityAfter:  Math.round(data.simulation_metrics.deepfake_vulnerability.protected_score),
+      similarityBefore: detBefore,
+      similarityAfter:  detAfter,
       photo: {
         originalSrc:  imageB64,
         protectedSrc: data.protection_result.protected_image_base64,
       },
-      analyzedAt:      new Date().toLocaleString('ko-KR'),
-      customHeadline:  null,
-      customDesc:      null,
+      heatmapSrc:    data.original_analysis.ai_perception.grad_cam_heatmap,
+      trainingGraph: data.simulation_metrics.training_efficiency_graph,
+      analyzedAt:    new Date().toLocaleString('ko-KR'),
+      customHeadline: null,
+      customDesc:     null,
     });
 
     document.getElementById('btn-download').disabled = !_currentRequestId;
