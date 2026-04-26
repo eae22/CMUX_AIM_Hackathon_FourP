@@ -13,6 +13,7 @@ const thumbGrid      = document.getElementById('thumbGrid');
 const thumbCount     = document.getElementById('thumbCount');
 const btnProtect     = document.getElementById('btnProtect');
 const btnBack        = document.getElementById('btnBack');
+const uploadSection  = document.getElementById('uploadSection');
 const pageContent    = document.getElementById('pageContent');
 const loadingOverlay = document.getElementById('loadingOverlay');
 const resultSection  = document.getElementById('resultSection');
@@ -168,6 +169,7 @@ function renderResult() {
 
   try { sessionStorage.setItem('atmResponse', JSON.stringify(_response)); } catch (_) {}
 
+  uploadSection.hidden = true;
   btnProtect.hidden = true;
   btnBack.hidden = false;
 }
@@ -186,6 +188,9 @@ function resetAll() {
   thumbGrid.querySelectorAll('.thumb-item').forEach(el => el.remove());
   thumbArea.classList.remove('visible');
   dropZone.style.display = '';
+  uploadSection.hidden = false;
+  dropZone.style.display = '';
+  thumbArea.classList.remove('visible');
   btnProtect.disabled = true;
   btnBack.hidden = true;
   resultSection.hidden = true;
