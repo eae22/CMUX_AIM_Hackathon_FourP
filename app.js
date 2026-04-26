@@ -192,6 +192,19 @@ function resetAll() {
 /* ── Helpers ─────────────────────────────────────── */
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+/* ── analysis.html에서 뒤로가기 시 결과 복원 ──────── */
+(function restoreIfReturning() {
+  try {
+    const stored = sessionStorage.getItem('atmResponse');
+    if (!stored) return;
+    _response = JSON.parse(stored);
+    _b64 = _response.original_image_base64 || '';
+    if (_b64) renderThumb();
+    renderResult();
+    resultSection.hidden = false;
+  } catch (_) {}
+})();
+
 function buildDemoResponse(b64) {
   return {
     request_id: 'demo_' + Date.now(),
