@@ -355,29 +355,53 @@ async function downloadProtected() {
 }
 
 async function shareResult() {
-  const score = _currentData.protectionScore;
-  const text  = `내 사진이 ${score}% 보호되었습니다! #ShieldFace #딥페이크차단`;
-  const btn   = document.querySelector('.btn-primary');
-
-  if (navigator.share) {
-    try { await navigator.share({ title: 'ShieldFace 결과', text }); }
-    catch (_) {}
-    return;
-  }
+  const btn      = document.querySelector('.btn-primary');
+  const origText = btn.textContent;
+  btn.textContent = '캡처 중…';
+  btn.disabled    = true;
 
   try {
-    await navigator.clipboard.writeText(text);
-  } catch (_) {
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    ta.style.cssText = 'position:fixed;opacity:0';
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-  }
+    const canvas = await html2canvas(document.getElementById('app'), {
+      backgroundColor: '#0a0a0a',
+      scale: 2,
+      useCORS: true,
+      logging: false,
+    });
 
-  const original = btn.textContent;
-  btn.textContent = '복사됨!';
-  setTimeout(() => { btn.textContent = original; }, 1800);
+    canvas.toBlob(async blob => {
+      const score = _currentData.protectionScore;
+      const shareText = `내 사진이 ${score}% 보호되었습니다! #ShieldFace #딥페이크차단`;
+      const file = new File([blob], 'shieldface-result.png', { type: 'image/png' });
+
+      // 모바일: 이미지 파일 포함 네이티브 공유
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ title: 'ShieldFace 결과', text: shareText, files: [file] });
+          btn.textContent = origText;
+          btn.disabled = false;
+          return;
+        } catch (_) {}
+      }
+
+      // 데스크톱 / 폴백: PNG 다운로드
+      const url = URL.createObjectURL(blob);
+      const a   = document.createElement('a');
+      a.href     = url;
+      a.download = 'shieldface-result.png';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      btn.textContent = '저장됨!';
+      setTimeout(() => { btn.textContent = origText; btn.disabled = false; }, 1800);
+    }, 'image/png');
+
+  } catch (_) {
+    // html2canvas 실패 시 텍스트 복사로 폴백
+    const text = `내 사진이 ${_currentData.protectionScore}% 보호되었습니다! #ShieldFace #딥페이크차단`;
+    try { await navigator.clipboard.writeText(text); } catch (__) {}
+    btn.textContent = '복사됨!';
+    setTimeout(() => { btn.textContent = origText; btn.disabled = false; }, 1800);
+  }
 }
