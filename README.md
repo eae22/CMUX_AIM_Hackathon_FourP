@@ -2,7 +2,7 @@
 
 # 🛡️ 404 Face Not Found — AI 복제·딥페이크 방지 서비스
 
-> "같은 사진, AI는 읽지 못한다"
+> "우리 눈엔 같은 사진, AI 눈엔 노이즈"
 
 **트랙:** AI Safety & Security
 
