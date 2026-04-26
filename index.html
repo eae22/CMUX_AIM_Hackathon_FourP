@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>PixelGuard</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div class="app-bar">
+  <span class="logo-badge">ATM</span>
+  <span class="app-bar-title">PixelGuard</span>
+</div>
+
+<!-- ══ 페이지 본문 (로딩 중 불투명 처리됨) ════════ -->
+<div id="pageContent">
+  <div class="scroll-area">
+
+    <!-- 업로드 영역 -->
+    <div id="uploadSection">
+      <p class="section-title">사진 업로드</p>
+      <p class="section-sub">보호할 사진을 선택하세요. 여러 장을 한 번에 업로드할 수 있어요.</p>
+
+      <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" multiple hidden />
+
+      <div class="drop-zone" id="dropZone">
+        <div class="drop-icon">🖼️</div>
+        <div class="drop-label">탭해서 사진 선택</div>
+        <div class="drop-sub">셀카, 프로필, SNS 사진 등<br>얼굴이 포함된 이미지</div>
+        <div class="drop-fmt">JPG · PNG · WEBP · 장당 최대 10MB</div>
+      </div>
+
+      <div class="thumb-area" id="thumbArea">
+        <div class="thumb-header">
+          <span class="thumb-count" id="thumbCount">0장 선택됨</span>
+        </div>
+        <div class="thumb-grid" id="thumbGrid">
+          <div class="thumb-overlay"><span>탭하여 사진 변경</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 결과 영역 (처음엔 숨김, 보호 완료 후 나타남) -->
+    <div id="resultSection" hidden>
+      <div class="result-sep"></div>
+
+      <div class="result-badge">✓ 보호 완료</div>
+      <p class="section-title" id="resultTitle">사진이 보호되었습니다</p>
+
+      <!-- 원본 / 보호본 비교 (JS가 채움) -->
+      <div id="comparePairs"></div>
+
+      <!-- 취약도 점수 -->
+      <div class="score-row">
+        <div class="score-chip danger">
+          <span class="chip-label">보호 전 취약도</span>
+          <span class="chip-val" id="scoreOrig">95.5%</span>
+        </div>
+        <div class="score-arrow">→</div>
+        <div class="score-chip safe">
+          <span class="chip-label">보호 후 취약도</span>
+          <span class="chip-val" id="scoreProt">4.2%</span>
+        </div>
+      </div>
+
+      <button class="btn btn-green" onclick="downloadAll()">⬇️ 보호된 사진 저장</button>
+      <a class="btn btn-outline" style="margin-top:10px" href="analysis.html">📊 분석 보러가기</a>
+      <div class="reset-link" onclick="resetAll()">처음으로 돌아가기</div>
+    </div>
+
+  </div>
+
+  <!-- 하단 고정 버튼 -->
+  <div class="sticky-bottom">
+    <button class="btn btn-primary" id="btnProtect" onclick="startProtection()" disabled>
+      🛡️ 보호 시작
+    </button>
+  </div>
+</div>
+
+<!-- ══ 로딩 오버레이 (업로드 화면 위에 뜸) ════════ -->
+<div id="loadingOverlay" hidden>
+  <div class="loading-card">
+    <div class="spinner-wrap">
+      <div class="spinner"></div>
+      <div class="spinner-icon">🛡️</div>
+    </div>
+    <div class="loading-text">
+      <div class="loading-title" id="loadingTitle">보호 처리 중...</div>
+      <div class="loading-sub"  id="loadingSub">잠시만 기다려 주세요</div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <div class="track-list">
+      <div class="track-item" id="track0"><div class="track-dot"></div>얼굴 특징점 분석 (MediaPipe)</div>
+      <div class="track-item" id="track1"><div class="track-dot"></div>FGSM 적대적 노이즈 생성</div>
+      <div class="track-item" id="track2"><div class="track-dot"></div>보호 이미지 렌더링</div>
+      <div class="track-item" id="track3"><div class="track-dot"></div>딥페이크 취약도 분석</div>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
