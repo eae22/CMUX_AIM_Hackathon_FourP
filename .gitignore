@@ -1,3 +1,4 @@
+.DS_Store
 __pycache__/
 *.pyc
 *.pyo
@@ -7,4 +8,3 @@ venv/
 *.egg-info/
 dist/
 build/
-.DS_Store
