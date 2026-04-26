@@ -6,7 +6,8 @@ from datetime import datetime
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 
 from schemas import ProtectRequest, ProtectResponse
 from services.ai_stub import analyze_face, apply_protection, build_simulation_metrics
@@ -26,6 +27,13 @@ app.add_middleware(
 
 # 보호된 이미지 임시 저장소 (다운로드 엔드포인트용)
 _result_store: dict[str, ProtectResponse] = {}
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
+@app.get("/", response_class=FileResponse)
+def root():
+    return "static/index.html"
 
 
 @app.get("/health")
