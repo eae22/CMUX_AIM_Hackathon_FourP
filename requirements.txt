@@ -1,0 +1,21 @@
+# ────────────────────────────────────────────────────────────────
+# ATM (Anti-Theft Media) — Python 의존성
+# ────────────────────────────────────────────────────────────────
+
+# [중요] torch / torchvision 은 CUDA 버전에 맞게 별도 설치 필요
+#   로컬 RTX 4060 (CUDA 12.x):
+#     pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+#   서버 CPU 전용:
+#     pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+torch
+torchvision
+
+# [중요] 서버(헤드리스 Linux)에서는 opencv-python 대신 headless 버전 필수
+#   로컬(GUI 있음): opencv-python
+#   서버(GUI 없음): opencv-python-headless  ← libGL.so.1 에러 방지
+opencv-python-headless
+
+mediapipe>=0.10.13
+numpy
+Pillow
+pydantic>=2.0
