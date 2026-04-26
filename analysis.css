@@ -58,6 +58,16 @@ body {
 }
 .btn-back:hover { color: var(--text); }
 .header-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.header-logo-icon {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+.header-logo span {
   font-size: 18px;
   font-weight: 700;
   background: linear-gradient(135deg, var(--accent), var(--accent2));
