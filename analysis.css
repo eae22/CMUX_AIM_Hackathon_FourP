@@ -74,7 +74,7 @@ body {
   font-family: 'Courier New', Courier, monospace;
   color: #ffffff;
   text-shadow: -1px 0 #ff0066, 1px 0 #00ff88, 0 0 8px rgba(255,255,255,0.3);
-  letter-spacing: 2px;
+  letter-spacing: 4px;
   text-transform: uppercase;
   -webkit-text-fill-color: #ffffff;
 }
