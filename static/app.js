@@ -1,9 +1,9 @@
 const API_URL = 'http://localhost:8000/api/protect';
 
 /* ── State ───────────────────────────────────────── */
-let _files     = [];
-let _b64s      = [];
-let _responses = [];
+let _file     = null;
+let _b64      = null;
+let _response = null;
 
 /* ── DOM refs ────────────────────────────────────── */
 const fileInput      = document.getElementById('fileInput');
@@ -24,111 +24,86 @@ dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover
 dropZone.addEventListener('drop', e => {
   e.preventDefault();
   dropZone.classList.remove('dragover');
-  handleFiles([...e.dataTransfer.files]);
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
 });
 
 thumbGrid.addEventListener('click', () => fileInput.click());
 
 fileInput.addEventListener('change', e => {
-  if (e.target.files.length) handleFiles([...e.target.files]);
+  if (e.target.files.length) handleFile(e.target.files[0]);
   fileInput.value = '';
 });
 
 /* ── Handle file selection ───────────────────────── */
-function handleFiles(files) {
-  const valid = files.filter(f => {
-    if (f.size > 10 * 1024 * 1024) { alert(`${f.name}: 파일 크기 10MB 초과`); return false; }
-    return true;
-  });
-  if (!valid.length) return;
+function handleFile(file) {
+  if (file.size > 10 * 1024 * 1024) { alert(`${file.name}: 파일 크기 10MB 초과`); return; }
 
-  _files = valid;
-  _b64s  = [];
+  _file = file;
+  _b64  = null;
 
-  let done = 0;
-  valid.forEach((file, i) => {
-    const reader = new FileReader();
-    reader.onload = ev => {
-      _b64s[i] = ev.target.result;
-      done++;
-      if (done === valid.length) renderThumbs();
-    };
-    reader.readAsDataURL(file);
-  });
+  const reader = new FileReader();
+  reader.onload = ev => {
+    _b64 = ev.target.result;
+    renderThumb();
+  };
+  reader.readAsDataURL(file);
 }
 
-function renderThumbs() {
-  thumbGrid.querySelectorAll('.thumb-item, .thumb-more').forEach(el => el.remove());
+function renderThumb() {
+  thumbGrid.querySelectorAll('.thumb-item').forEach(el => el.remove());
 
-  const MAX_SHOW = 8;
-  const overlay  = thumbGrid.querySelector('.thumb-overlay');
+  const overlay = thumbGrid.querySelector('.thumb-overlay');
+  const div = document.createElement('div');
+  div.className = 'thumb-item';
+  const img = document.createElement('img');
+  img.src = _b64;
+  img.alt = '선택된 사진';
+  div.appendChild(img);
+  thumbGrid.insertBefore(div, overlay);
 
-  _b64s.slice(0, MAX_SHOW).forEach((b64, i) => {
-    const div = document.createElement('div');
-    div.className = 'thumb-item';
-    const img = document.createElement('img');
-    img.src = b64;
-    img.alt = `사진 ${i + 1}`;
-    div.appendChild(img);
-    thumbGrid.insertBefore(div, overlay);
-  });
-
-  if (_b64s.length > MAX_SHOW) {
-    const more = document.createElement('div');
-    more.className = 'thumb-more';
-    more.textContent = `+${_b64s.length - MAX_SHOW}`;
-    thumbGrid.insertBefore(more, overlay);
-  }
-
-  thumbCount.textContent = `${_b64s.length}장 선택됨`;
+  thumbCount.textContent = '1장 선택됨';
   dropZone.style.display = 'none';
   thumbArea.classList.add('visible');
   btnProtect.disabled = false;
+  btnProtect.hidden = false;
 
-  // 이전 결과가 있으면 숨김
   resultSection.hidden = true;
 }
 
 /* ── Protection flow ─────────────────────────────── */
 async function startProtection() {
-  if (!_b64s.length) return;
+  if (!_b64) return;
 
-  // 로딩 오버레이 표시 + 배경 불투명 처리
   pageContent.classList.add('dimmed');
   loadingOverlay.hidden = false;
-  _responses = [];
+  _response = null;
 
-  for (let i = 0; i < _b64s.length; i++) {
-    updateLoadingCounter(i + 1, _b64s.length);
-    animateLoading();
-    await delay(2800);
+  updateLoadingCounter();
+  animateLoading();
+  await delay(2800);
 
-    try {
-      const res = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image_base64: _b64s[i] }),
-      });
-      if (!res.ok) throw new Error();
-      _responses.push(await res.json());
-    } catch (_) {
-      _responses.push(buildDemoResponse(_b64s[i]));
-    }
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image_base64: _b64 }),
+    });
+    if (!res.ok) throw new Error();
+    _response = await res.json();
+  } catch (_) {
+    _response = buildDemoResponse(_b64);
   }
 
-  // 로딩 오버레이 해제
   loadingOverlay.hidden = true;
   pageContent.classList.remove('dimmed');
 
-  // 결과 렌더링 후 스크롤
   renderResult();
   resultSection.hidden = false;
   resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-function updateLoadingCounter(cur, total) {
-  document.getElementById('loadingTitle').textContent =
-    total > 1 ? `${cur} / ${total}장 보호 중...` : '보호 처리 중...';
+function updateLoadingCounter() {
+  document.getElementById('loadingTitle').textContent = '보호 처리 중...';
   document.getElementById('loadingSub').textContent = '잠시만 기다려 주세요';
 }
 
@@ -166,53 +141,47 @@ function renderResult() {
   const pairs = document.getElementById('comparePairs');
   pairs.innerHTML = '';
 
-  document.getElementById('resultTitle').textContent =
-    _responses.length > 1 ? `${_responses.length}장의 사진이 보호되었습니다` : '사진이 보호되었습니다';
+  document.getElementById('resultTitle').textContent = '사진이 보호되었습니다';
 
-  const first = _responses[0];
   document.getElementById('scoreOrig').textContent =
-    (first?.simulation_metrics?.deepfake_vulnerability?.original_score  ?? 95.5) + '%';
+    (_response?.simulation_metrics?.deepfake_vulnerability?.original_score  ?? 95.5) + '%';
   document.getElementById('scoreProt').textContent =
-    (first?.simulation_metrics?.deepfake_vulnerability?.protected_score ?? 4.2)  + '%';
+    (_response?.simulation_metrics?.deepfake_vulnerability?.protected_score ?? 4.2)  + '%';
 
-  _responses.forEach((resp, i) => {
-    const origSrc = resp.original_image_base64 || _b64s[i];
-    const protSrc = resp.protection_result?.protected_image_base64 || _b64s[i];
+  const origSrc = _response.original_image_base64 || _b64;
+  const protSrc = _response.protection_result?.protected_image_base64 || _b64;
 
-    const pair = document.createElement('div');
-    pair.className = 'compare-pair';
-    pair.innerHTML = `
-      <div class="compare-item">
-        <img src="${origSrc}" alt="원본 ${i + 1}" />
-        <span class="compare-label orig">원본</span>
-      </div>
-      <div class="compare-item">
-        <img src="${protSrc}" alt="보호됨 ${i + 1}" />
-        <span class="compare-label prot">🛡️ 보호됨</span>
-      </div>
-    `;
-    pairs.appendChild(pair);
-  });
+  const pair = document.createElement('div');
+  pair.className = 'compare-pair';
+  pair.innerHTML = `
+    <div class="compare-item">
+      <img src="${origSrc}" alt="원본" />
+      <span class="compare-label orig">원본</span>
+    </div>
+    <div class="compare-item">
+      <img src="${protSrc}" alt="보호됨" />
+      <span class="compare-label prot">🛡️ 보호됨</span>
+    </div>
+  `;
+  pairs.appendChild(pair);
 
-  try { sessionStorage.setItem('atmResponse', JSON.stringify(_responses[0])); } catch (_) {}
+  try { sessionStorage.setItem('atmResponse', JSON.stringify(_response)); } catch (_) {}
+
+  btnProtect.hidden = true;
 }
 
 /* ── Download ────────────────────────────────────── */
 function downloadAll() {
-  _responses.forEach((resp, i) => {
-    const src = resp?.protection_result?.protected_image_base64 || _b64s[i];
-    setTimeout(() => {
-      const a = document.createElement('a');
-      a.href = src; a.download = `protected_${i + 1}.jpg`; a.click();
-    }, i * 300);
-  });
+  const src = _response?.protection_result?.protected_image_base64 || _b64;
+  const a = document.createElement('a');
+  a.href = src; a.download = 'protected_1.jpg'; a.click();
 }
 
 /* ── Reset ───────────────────────────────────────── */
 function resetAll() {
-  _files = []; _b64s = []; _responses = [];
+  _file = null; _b64 = null; _response = null;
   fileInput.value = '';
-  thumbGrid.querySelectorAll('.thumb-item, .thumb-more').forEach(el => el.remove());
+  thumbGrid.querySelectorAll('.thumb-item').forEach(el => el.remove());
   thumbArea.classList.remove('visible');
   dropZone.style.display = '';
   btnProtect.disabled = true;
@@ -222,6 +191,19 @@ function resetAll() {
 
 /* ── Helpers ─────────────────────────────────────── */
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+/* ── analysis.html에서 뒤로가기 시 결과 복원 ──────── */
+(function restoreIfReturning() {
+  try {
+    const stored = sessionStorage.getItem('atmResponse');
+    if (!stored) return;
+    _response = JSON.parse(stored);
+    _b64 = _response.original_image_base64 || '';
+    if (_b64) renderThumb();
+    renderResult();
+    resultSection.hidden = false;
+  } catch (_) {}
+})();
 
 function buildDemoResponse(b64) {
   return {
