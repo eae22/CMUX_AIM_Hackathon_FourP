@@ -55,6 +55,19 @@ body {
 }
 .app-bar-title { font-size: 14px; font-weight: 600; color: var(--text); }
 
+.btn-back {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 0;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+.btn-back:hover { color: var(--text); }
+
 .app-logo {
   display: flex;
   align-items: center;
