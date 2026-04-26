@@ -55,6 +55,28 @@ body {
 }
 .app-bar-title { font-size: 14px; font-weight: 600; color: var(--text); }
 
+.app-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.app-logo-icon {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 10px;
+}
+.app-logo-text {
+  font-size: 18px;
+  font-weight: 900;
+  font-family: 'Courier New', Courier, monospace;
+  color: #ffffff;
+  text-shadow: -1px 0 #ff0066, 1px 0 #00ff88, 0 0 8px rgba(255,255,255,0.3);
+  letter-spacing: 0.5px;
+  word-spacing: 4px;
+  text-transform: uppercase;
+}
+
 /* ── Page content ────────────────────────────────── */
 #pageContent {
   display: flex;
