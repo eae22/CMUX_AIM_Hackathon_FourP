@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>딥페이크 방어 분석 결과</title>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #1a1a1a;
+    --surface2: #242424;
+    --border: #2a2a2a;
+    --text: #f5f5f5;
+    --text-muted: #8e8e8e;
+    --safe: #22c55e;
+    --safe-dim: rgba(34,197,94,0.15);
+    --warn: #eab308;
+    --warn-dim: rgba(234,179,8,0.15);
+    --danger: #ef4444;
+    --danger-dim: rgba(239,68,68,0.15);
+    --accent: #a855f7;
+    --accent2: #6366f1;
+    --radius: 16px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 24px 16px 48px;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* ─── Header ─── */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0 4px;
+  }
+  .header-logo {
+    font-size: 18px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.5px;
+  }
+  .header-time {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  /* ─── Card base ─── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  /* ─── Compare card ─── */
+  .compare-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px 12px;
+  }
+  .compare-hint {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+  }
+  .compare-slot {
+    background: var(--surface);
+  }
+  .compare-label-wrap {
+    display: block;
+    cursor: pointer;
+  }
+  .compare-img-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background: var(--surface2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .compare-img-wrap img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: none;
+    transition: opacity 0.3s;
+  }
+  .compare-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-muted);
+    padding: 12px;
+    text-align: center;
+  }
+  .compare-placeholder svg { opacity: 0.35; }
+  .compare-placeholder span { font-size: 11px; line-height: 1.4; }
+  .compare-tag-row {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    padding: 24px 10px 10px;
+    background: linear-gradient(transparent, rgba(0,0,0,0.7));
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+  .compare-tag {
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 999px;
+    padding: 3px 9px;
+    letter-spacing: 0.2px;
+  }
+  .compare-tag-before {
+    background: rgba(239,68,68,0.25);
+    color: #fca5a5;
+    border: 1px solid rgba(239,68,68,0.4);
+  }
+  .compare-tag-after {
+    background: rgba(34,197,94,0.25);
+    color: #86efac;
+    border: 1px solid rgba(34,197,94,0.4);
+  }
+  .compare-upload-icon {
+    font-size: 10px;
+    color: rgba(255,255,255,0.5);
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .compare-footer {
+    padding: 10px 20px 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .scan-badge {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-left: auto;
+  }
+  .scan-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--safe);
+    animation: pulse-dot 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse-dot {
+    0%,100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* ─── Status card ─── */
+  .status-card .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px 0;
+  }
+  .card-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+  }
+  .badge-icon {
+    font-size: 13px;
+  }
+
+  .status-body {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px 20px;
+    gap: 20px;
+  }
+
+  /* Circular gauge */
+  .gauge-wrap {
+    position: relative;
+    flex-shrink: 0;
+    width: 120px;
+    height: 120px;
+  }
+  .gauge-svg {
+    transform: rotate(-90deg);
+    width: 120px;
+    height: 120px;
+  }
+  .gauge-track {
+    fill: none;
+    stroke: var(--surface2);
+    stroke-width: 8;
+  }
+  .gauge-fill {
+    fill: none;
+    stroke-width: 8;
+    stroke-linecap: round;
+    stroke-dasharray: 301.59;
+    stroke-dashoffset: 301.59;
+    transition: stroke-dashoffset 1.4s cubic-bezier(0.22, 1, 0.36, 1),
+                stroke 0.4s ease;
+  }
+  .gauge-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .gauge-pct {
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -1px;
+  }
+  .gauge-unit {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  /* Status info */
+  .status-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .status-title {
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+  .stat-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+  }
+  .stat-label { color: var(--text-muted); }
+  .stat-val { font-weight: 700; }
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 0 20px;
+  }
+
+  /* ─── Analysis card (graph + summary merged) ─── */
+  .analysis-card .card-header {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 16px 20px 14px;
+  }
+  .analysis-subtitle {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .graph-body {
+    padding: 0 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .bar-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .bar-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .bar-tag {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .bar-tag-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+  }
+  .bar-pct {
+    font-size: 13px;
+    font-weight: 800;
+  }
+  .bar-track {
+    width: 100%;
+    height: 10px;
+    background: var(--surface2);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    width: 0%;
+    transition: width 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .bar-fill.before { background: linear-gradient(90deg, #ef4444, #f97316); }
+  .bar-fill.after  { background: linear-gradient(90deg, #22c55e, #10b981); }
+  .analysis-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 18px 20px 0;
+  }
+  .analysis-summary {
+    padding: 16px 20px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .ai-main {
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+  .ai-desc {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+  .ai-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 2px;
+  }
+  .ai-tag {
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 999px;
+    padding: 4px 10px;
+    background: var(--surface2);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+  }
+
+  /* ─── Action buttons ─── */
+  .actions {
+    display: flex;
+    gap: 10px;
+  }
+  .btn {
+    flex: 1;
+    border: none;
+    border-radius: 12px;
+    padding: 14px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff;
+  }
+  .btn-secondary {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn:hover { opacity: 0.85; }
+
+  /* ─── Upload trigger ─── */
+  .compare-slot input[type="file"] { display: none; }
+
+  /* ─── Download button ─── */
+  .btn-download {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 7px 14px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+  .btn-download:disabled {
+    background: var(--surface2);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    cursor: not-allowed;
+  }
+  .btn-download:not(:disabled):hover  { opacity: 0.85; }
+  .btn-download:not(:disabled):active { transform: scale(0.97); }
+
+  /* ─── Heatmap card ─── */
+  .heatmap-header {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 16px 20px 12px;
+  }
+  .heatmap-body {
+    padding: 0 20px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .heatmap-img-wrap {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background: var(--surface2);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .heatmap-img-wrap img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: none;
+  }
+  .heatmap-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+  .heatmap-placeholder svg { opacity: 0.35; }
+  .heatmap-caption {
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  /* ─── Training graph card ─── */
+  .training-header {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 16px 20px 14px;
+  }
+  .training-body {
+    padding: 0 20px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .chart-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .chart-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .chart-canvas-wrap {
+    background: var(--surface2);
+    border-radius: 10px;
+    overflow: hidden;
+    height: 100px;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100px;
+  }
+  .chart-legend {
+    display: flex;
+    gap: 16px;
+    margin-top: 2px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .legend-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ─── Loading spinner ─── */
+  .loading-spinner {
+    display: inline-block;
+    width: 13px; height: 13px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ─── Responsive tweaks ─── */
+  @media (max-width: 360px) {
+    .gauge-wrap { width: 100px; height: 100px; }
+    .gauge-svg { width: 100px; height: 100px; }
+    .gauge-pct { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+
+<script>
+const RESULT_DATA = {
+  level: "safe",
+  protectionScore: 92,
+
+  similarityBefore: 99,
+  similarityAfter:  8,
+
+  photo: {
+    originalSrc:  "",
+    protectedSrc: "",
+  },
+
+  heatmapSrc: "",
+
+  trainingGraph: {
+    epochs:            [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    loss_original:     [0.85, 0.62, 0.41, 0.22, 0.12, 0.08, 0.05, 0.03, 0.02, 0.01],
+    loss_protected:    [0.88, 0.87, 0.89, 0.86, 0.91, 0.88, 0.89, 0.90, 0.87, 0.89],
+    accuracy_original: [0.45, 0.68, 0.79, 0.88, 0.94, 0.97, 0.98, 0.99, 0.99, 0.99],
+    accuracy_protected:[0.12, 0.11, 0.13, 0.10, 0.12, 0.11, 0.14, 0.12, 0.11, 0.13],
+  },
+
+  analyzedAt:     "2026-04-26 · 14:32",
+  customHeadline: null,
+  customDesc:     null
+};
+
+const API_BASE_URL = "http://localhost:8000";
+
+const LEVEL_CONFIG = {
+  safe: {
+    label: "안전",
+    icon:  "✦",
+    color: "var(--safe)",
+    dim:   "var(--safe-dim)",
+    headline: score => `사진이 ${score}% 보호되어 있어요`,
+    desc:  "이 사진으로 딥페이크를 만들기 매우 어렵습니다. 지금 바로 안심하고 공유하세요.",
+    tags:  ["공유 가능", "딥페이크 차단됨"]
+  },
+  warn: {
+    label: "주의",
+    icon:  "⚠",
+    color: "var(--warn)",
+    dim:   "var(--warn-dim)",
+    headline: score => `사진이 ${score}% 보호되어 있어요`,
+    desc:  "어느 정도 보호되어 있지만 완벽하지 않아요. 중요한 사진이라면 재처리 후 사용하세요.",
+    tags:  ["신중하게 공유", "재처리 권장"]
+  },
+  danger: {
+    label: "경고",
+    icon:  "✕",
+    color: "var(--danger)",
+    dim:   "var(--danger-dim)",
+    headline: score => `보호 강도가 ${score}%로 낮아요`,
+    desc:  "지금 상태로 공유하면 딥페이크에 악용될 수 있어요. 재처리 후 사용하세요.",
+    tags:  ["공유 보류 권장", "재처리 필요"]
+  }
+};
+</script>
+
+<div class="container" id="app">
+
+  <!-- Header -->
+  <div class="header">
+    <span class="header-logo">ShieldFace</span>
+    <span class="header-time" id="analyzed-at"></span>
+  </div>
+
+  <!-- Compare card -->
+  <div class="card" id="compare-card">
+    <div class="compare-header">
+      <span class="card-label">사진 비교</span>
+      <span class="compare-hint">탭하여 사진 불러오기</span>
+    </div>
+    <div class="compare-grid">
+
+      <!-- 원본 슬롯 -->
+      <div class="compare-slot">
+        <label for="file-original" class="compare-label-wrap">
+          <div class="compare-img-wrap">
+            <img id="img-original" alt="원본 사진">
+            <div class="compare-placeholder" id="ph-original">
+              <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path d="M4 16l4-4a3 3 0 014 0l4 4M14 14l1.5-1.5a3 3 0 014 0L22 14M8 8h.01M2 6a2 2 0 012-2h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/>
+              </svg>
+              <span>원본 사진<br>탭하여 추가</span>
+            </div>
+            <div class="compare-tag-row">
+              <span class="compare-tag compare-tag-before">원본</span>
+              <span class="compare-upload-icon">
+                <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12l7-7 7 7"/></svg>
+              </span>
+            </div>
+          </div>
+        </label>
+        <input type="file" id="file-original" accept="image/*">
+      </div>
+
+      <!-- 보호본 슬롯 -->
+      <div class="compare-slot">
+        <label for="file-protected" class="compare-label-wrap">
+          <div class="compare-img-wrap">
+            <img id="img-protected" alt="보호본 사진">
+            <div class="compare-placeholder" id="ph-protected">
+              <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+              <span>보호본 사진<br>탭하여 추가</span>
+            </div>
+            <div class="compare-tag-row">
+              <span class="compare-tag compare-tag-after">보호본</span>
+              <span class="compare-upload-icon">
+                <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12l7-7 7 7"/></svg>
+              </span>
+            </div>
+          </div>
+        </label>
+        <input type="file" id="file-protected" accept="image/*">
+      </div>
+
+    </div>
+    <div class="compare-footer">
+      <span>육안으로 차이가 거의 없습니다</span>
+      <button class="btn-download" id="btn-download" onclick="downloadProtected()" disabled>
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path d="M12 5v10M7 15l5 5 5-5M4 20h16"/>
+        </svg>
+        보호본 저장
+      </button>
+    </div>
+  </div>
+
+  <!-- Security status card -->
+  <div class="card status-card">
+    <div class="card-header">
+      <span class="card-label">보안 분석 결과</span>
+      <span class="status-badge" id="status-badge">
+        <span class="badge-icon" id="badge-icon"></span>
+        <span id="badge-label"></span>
+      </span>
+    </div>
+    <div class="status-body">
+      <div class="gauge-wrap">
+        <svg class="gauge-svg" viewBox="0 0 120 120">
+          <circle class="gauge-track" cx="60" cy="60" r="48"/>
+          <circle class="gauge-fill" id="gauge-fill" cx="60" cy="60" r="48"/>
+        </svg>
+        <div class="gauge-center">
+          <span class="gauge-pct" id="gauge-pct">0</span>
+          <span class="gauge-unit">보호율</span>
+        </div>
+      </div>
+      <div class="status-info">
+        <div class="status-title" id="status-title"></div>
+        <div class="stat-row">
+          <span class="stat-label">유사도 감소</span>
+          <span class="stat-val" id="stat-reduction" style="color:var(--safe)"></span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">분석 모델</span>
+          <span class="stat-val">ArcFace v3</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">변형 레이어</span>
+          <span class="stat-val">12단계</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Analysis card: graph + summary merged -->
+  <div class="card analysis-card">
+    <div class="card-header">
+      <span class="card-label">AI 얼굴 인식률</span>
+      <span class="analysis-subtitle">보호 후 AI가 얼굴을 거의 인식 못해요</span>
+    </div>
+    <div class="graph-body">
+      <div class="bar-group">
+        <div class="bar-label-row">
+          <span class="bar-tag">
+            <span class="bar-tag-dot" style="background:#ef4444;"></span>
+            보호 전
+          </span>
+          <span class="bar-pct" id="bar-pct-before" style="color:#ef4444;"></span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill before" id="bar-before"></div>
+        </div>
+      </div>
+      <div class="bar-group">
+        <div class="bar-label-row">
+          <span class="bar-tag">
+            <span class="bar-tag-dot" style="background:#22c55e;"></span>
+            보호 후
+          </span>
+          <span class="bar-pct" id="bar-pct-after" style="color:#22c55e;"></span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill after" id="bar-after"></div>
+        </div>
+      </div>
+    </div>
+    <div class="analysis-divider"></div>
+    <div class="analysis-summary">
+      <div class="ai-main" id="ai-headline"></div>
+      <div class="ai-desc" id="ai-desc"></div>
+      <div class="ai-tags" id="ai-tags"></div>
+    </div>
+  </div>
+
+  <!-- Heatmap card -->
+  <div class="card" id="heatmap-card">
+    <div class="heatmap-header">
+      <span class="card-label">AI 주목 영역 (Grad-CAM)</span>
+      <span class="analysis-subtitle">보호 전 AI가 집중한 얼굴 부위</span>
+    </div>
+    <div class="heatmap-body">
+      <div class="heatmap-img-wrap">
+        <img id="img-heatmap" alt="Grad-CAM heatmap">
+        <div class="heatmap-placeholder" id="ph-heatmap">
+          <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+          </svg>
+          <span>분석 후 표시됩니다</span>
+        </div>
+      </div>
+      <p class="heatmap-caption">붉은 영역일수록 AI가 얼굴로 강하게 인식한 부위예요. 보호 처리 후에는 이 신호가 사라집니다.</p>
+    </div>
+  </div>
+
+  <!-- Training graph card -->
+  <div class="card" id="training-card">
+    <div class="training-header">
+      <span class="card-label">딥페이크 학습 효율</span>
+      <span class="analysis-subtitle">보호 처리 시 AI 학습이 어떻게 막히는지</span>
+    </div>
+    <div class="training-body">
+      <div class="chart-group">
+        <span class="chart-title">Loss</span>
+        <div class="chart-canvas-wrap">
+          <canvas id="chart-loss"></canvas>
+        </div>
+      </div>
+      <div class="chart-group">
+        <span class="chart-title">Accuracy</span>
+        <div class="chart-canvas-wrap">
+          <canvas id="chart-acc"></canvas>
+        </div>
+      </div>
+      <div class="chart-legend">
+        <div class="legend-item">
+          <span class="legend-dot" style="background:#ef4444;"></span>원본 학습
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot" style="background:#22c55e;"></span>보호본 학습
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="actions">
+    <button class="btn btn-secondary" onclick="resetDemo()">다시 분석</button>
+    <button class="btn btn-primary" onclick="shareResult()">결과 공유</button>
+  </div>
+
+</div>
+
+<script>
+let _currentData      = RESULT_DATA;
+let _currentRequestId = null;
+
+(function init() {
+  // index.html에서 sessionStorage로 넘어온 응답이 있으면 우선 사용
+  try {
+    const stored = sessionStorage.getItem('atmResponse');
+    if (stored) {
+      const resp = JSON.parse(stored);
+      const detBefore     = Math.round((resp.original_analysis?.detection_confidence ?? 0.99) * 100);
+      const detAfter      = Math.round((resp.protection_result?.detection_confidence ?? 0.08) * 100);
+      const protScore     = Math.round((1 - (resp.protection_result?.detection_confidence ?? 0.08)) * 100);
+      _currentRequestId   = resp.request_id || null;
+
+      renderResult({
+        level:            protScore >= 70 ? 'safe' : protScore >= 40 ? 'warn' : 'danger',
+        protectionScore:  protScore,
+        similarityBefore: detBefore,
+        similarityAfter:  detAfter,
+        photo: {
+          originalSrc:  resp.original_image_base64  || '',
+          protectedSrc: resp.protection_result?.protected_image_base64 || '',
+        },
+        heatmapSrc:    resp.original_analysis?.ai_perception?.grad_cam_heatmap || '',
+        trainingGraph: resp.simulation_metrics?.training_efficiency_graph || RESULT_DATA.trainingGraph,
+        analyzedAt:    new Date().toLocaleString('ko-KR'),
+        customHeadline: null,
+        customDesc:     null,
+      });
+      document.getElementById('btn-download').disabled = !_currentRequestId;
+      return;
+    }
+  } catch (_) {}
+
+  renderResult(RESULT_DATA);
+
+  document.getElementById('file-original').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    showSlot('original', URL.createObjectURL(file));
+    const reader = new FileReader();
+    reader.onload = ev => fetchProtection(ev.target.result);
+    reader.readAsDataURL(file);
+  });
+
+  document.getElementById('file-protected').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) showSlot('protected', URL.createObjectURL(file));
+  });
+})();
+
+function showSlot(slot, src) {
+  const img = document.getElementById('img-' + slot);
+  const ph  = document.getElementById('ph-'  + slot);
+  img.src = src;
+  img.style.display = 'block';
+  ph.style.display  = 'none';
+}
+
+function animateNumber(el, from, to, duration) {
+  const start = performance.now();
+  function step(now) {
+    const t = Math.min((now - start) / duration, 1);
+    const ease = 1 - Math.pow(1 - t, 4);
+    el.textContent = Math.round(from + (to - from) * ease);
+    if (t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function renderResult(d) {
+  _currentData = d;
+  const cfg    = LEVEL_CONFIG[d.level];
+  const clr    = cfg.color;
+  const circum = 2 * Math.PI * 48;
+
+  document.getElementById('analyzed-at').textContent = d.analyzedAt;
+
+  if (d.photo.originalSrc)  showSlot('original',  d.photo.originalSrc);
+  if (d.photo.protectedSrc) showSlot('protected', d.photo.protectedSrc);
+
+  const badge = document.getElementById('status-badge');
+  badge.style.background = cfg.dim;
+  badge.style.color = clr;
+  badge.style.border = `1px solid ${clr}40`;
+  document.getElementById('badge-icon').textContent  = cfg.icon;
+  document.getElementById('badge-label').textContent = cfg.label;
+
+  document.getElementById('status-title').textContent =
+    d.level === 'safe' ? '보호 상태 양호' :
+    d.level === 'warn' ? '보호 수준 보통' : '보호 수준 낮음';
+
+  const redEl = document.getElementById('stat-reduction');
+  redEl.textContent = `−${d.similarityBefore - d.similarityAfter}%p`;
+  redEl.style.color = clr;
+
+  const gaugeFill = document.getElementById('gauge-fill');
+  const pctEl     = document.getElementById('gauge-pct');
+  gaugeFill.style.stroke = clr;
+  pctEl.style.color = clr;
+  gaugeFill.style.transition = 'none';
+  gaugeFill.style.strokeDashoffset = circum;
+  pctEl.textContent = '0';
+  setTimeout(() => {
+    gaugeFill.style.transition = 'stroke-dashoffset 1.4s cubic-bezier(0.22, 1, 0.36, 1)';
+    gaugeFill.style.strokeDashoffset = circum - (circum * d.protectionScore / 100);
+    animateNumber(pctEl, 0, d.protectionScore, 1400);
+  }, 80);
+
+  document.getElementById('bar-pct-before').textContent = d.similarityBefore + '%';
+  document.getElementById('bar-pct-after').textContent  = d.similarityAfter  + '%';
+  const bB = document.getElementById('bar-before');
+  const bA = document.getElementById('bar-after');
+  bB.style.transition = bA.style.transition = 'none';
+  bB.style.width = bA.style.width = '0%';
+  setTimeout(() => {
+    bB.style.transition = bA.style.transition = 'width 1.2s cubic-bezier(0.22, 1, 0.36, 1)';
+    bB.style.width = d.similarityBefore + '%';
+    bA.style.width = d.similarityAfter  + '%';
+  }, 200);
+
+  document.getElementById('ai-headline').textContent = d.customHeadline || cfg.headline(d.protectionScore);
+  document.getElementById('ai-desc').textContent     = d.customDesc     || cfg.desc;
+  const tagsEl = document.getElementById('ai-tags');
+  tagsEl.innerHTML = '';
+  cfg.tags.forEach(t => {
+    const span = document.createElement('span');
+    span.className = 'ai-tag';
+    span.textContent = '#' + t;
+    tagsEl.appendChild(span);
+  });
+
+  const hmImg = document.getElementById('img-heatmap');
+  const hmPh  = document.getElementById('ph-heatmap');
+  if (d.heatmapSrc) {
+    hmImg.src = d.heatmapSrc;
+    hmImg.style.display = 'block';
+    hmPh.style.display  = 'none';
+  } else {
+    hmImg.style.display = 'none';
+    hmPh.style.display  = 'flex';
+  }
+
+  if (d.trainingGraph) {
+    setTimeout(() => {
+      const g = d.trainingGraph;
+      drawChart('chart-loss', g.epochs, g.loss_original,     g.loss_protected,     1.0);
+      drawChart('chart-acc',  g.epochs, g.accuracy_original, g.accuracy_protected, 1.0);
+    }, 100);
+  }
+}
+
+function drawChart(id, epochs, line1, line2, yMax) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  const wrap = canvas.parentElement;
+  canvas.width  = wrap.clientWidth  || 360;
+  canvas.height = wrap.clientHeight || 100;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const p = { t: 8, r: 10, b: 20, l: 28 };
+  const cW = W - p.l - p.r, cH = H - p.t - p.b;
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#242424';
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.strokeStyle = '#2a2a2a';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = p.t + (cH / 4) * i;
+    ctx.beginPath(); ctx.moveTo(p.l, y); ctx.lineTo(p.l + cW, y); ctx.stroke();
+    ctx.fillStyle = '#666'; ctx.font = '9px sans-serif'; ctx.textAlign = 'right';
+    ctx.fillText((yMax * (4 - i) / 4).toFixed(1), p.l - 3, y + 3);
+  }
+
+  ctx.fillStyle = '#666'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+  [0, Math.floor((epochs.length-1)/2), epochs.length-1].forEach(i => {
+    const x = p.l + (cW / (epochs.length - 1)) * i;
+    ctx.fillText(epochs[i], x, H - 4);
+  });
+
+  function line(data, color) {
+    ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+    data.forEach((v, i) => {
+      const x = p.l + (cW / (data.length - 1)) * i;
+      const y = p.t + cH - Math.min(v / yMax, 1) * cH;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+  }
+  line(line1, '#ef4444');
+  line(line2, '#22c55e');
+}
+
+async function fetchProtection(imageB64) {
+  setLoading(true);
+  try {
+    const res = await fetch(`${API_BASE_URL}/analyze`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        image_data: { original_base64: imageB64 },
+        parameters: { protection_algorithm: 'FGSM', epsilon: 0.03 }
+      })
+    });
+    if (!res.ok) throw new Error(`서버 오류 ${res.status}`);
+    const data = await res.json();
+
+    _currentRequestId = data.request_id;
+
+    const detBefore      = Math.round(data.original_analysis.detection_confidence * 100);
+    const detAfter       = Math.round(data.protection_result.detection_confidence * 100);
+    const protectedScore = Math.round((1 - data.protection_result.detection_confidence) * 100);
+
+    renderResult({
+      level:            protectedScore >= 70 ? 'safe' : protectedScore >= 40 ? 'warn' : 'danger',
+      protectionScore:  protectedScore,
+      similarityBefore: detBefore,
+      similarityAfter:  detAfter,
+      photo: {
+        originalSrc:  imageB64,
+        protectedSrc: data.protection_result.protected_image_base64,
+      },
+      heatmapSrc:    data.original_analysis.ai_perception.grad_cam_heatmap,
+      trainingGraph: data.simulation_metrics.training_efficiency_graph,
+      analyzedAt:    new Date().toLocaleString('ko-KR'),
+      customHeadline: null,
+      customDesc:     null,
+    });
+
+    document.getElementById('btn-download').disabled = !_currentRequestId;
+    setLoading(false);
+  } catch (err) {
+    setLoading(false, err.message);
+  }
+}
+
+function setLoading(on, errMsg) {
+  const hint   = document.querySelector('.compare-hint');
+  const footer = document.querySelector('.compare-footer span');
+  const dlBtn  = document.getElementById('btn-download');
+  if (on) {
+    hint.innerHTML   = '<span class="loading-spinner"></span> 분석 중…';
+    footer.textContent = '백엔드 처리 중…';
+    dlBtn.disabled   = true;
+  } else if (errMsg) {
+    hint.textContent   = '연결 실패 — 더미 데이터로 표시 중';
+    footer.innerHTML   = `<span style="color:var(--danger)">⚠ ${errMsg}</span>`;
+  } else {
+    hint.textContent   = '탭하여 사진 불러오기';
+    footer.textContent = '육안으로 차이가 거의 없습니다';
+  }
+}
+
+function resetDemo() {
+  location.reload();
+}
+
+async function downloadProtected() {
+  if (!_currentRequestId) return;
+  const res  = await fetch(`${API_BASE_URL}/api/download/${_currentRequestId}`);
+  const blob = await res.blob();
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'shieldface_protected.png';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+async function shareResult() {
+  const score = _currentData.protectionScore;
+  const text  = `내 사진이 ${score}% 보호되었습니다! #ShieldFace #딥페이크차단`;
+  const btn   = document.querySelector('.btn-primary');
+
+  if (navigator.share) {
+    try { await navigator.share({ title: 'ShieldFace 결과', text }); }
+    catch (_) {}
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (_) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+
+  const original = btn.textContent;
+  btn.textContent = '복사됨!';
+  setTimeout(() => { btn.textContent = original; }, 1800);
+}
+</script>
+</body>
+</html>
