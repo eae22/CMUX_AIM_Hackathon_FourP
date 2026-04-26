@@ -12,6 +12,7 @@ const thumbArea      = document.getElementById('thumbArea');
 const thumbGrid      = document.getElementById('thumbGrid');
 const thumbCount     = document.getElementById('thumbCount');
 const btnProtect     = document.getElementById('btnProtect');
+const btnBack        = document.getElementById('btnBack');
 const pageContent    = document.getElementById('pageContent');
 const loadingOverlay = document.getElementById('loadingOverlay');
 const resultSection  = document.getElementById('resultSection');
@@ -168,6 +169,7 @@ function renderResult() {
   try { sessionStorage.setItem('atmResponse', JSON.stringify(_response)); } catch (_) {}
 
   btnProtect.hidden = true;
+  btnBack.hidden = false;
 }
 
 /* ── Download ────────────────────────────────────── */
@@ -185,6 +187,7 @@ function resetAll() {
   thumbArea.classList.remove('visible');
   dropZone.style.display = '';
   btnProtect.disabled = true;
+  btnBack.hidden = true;
   resultSection.hidden = true;
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
