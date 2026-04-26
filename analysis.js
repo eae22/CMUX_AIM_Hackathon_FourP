@@ -370,13 +370,13 @@ async function shareResult() {
 
     canvas.toBlob(async blob => {
       const score = _currentData.protectionScore;
-      const shareText = `내 사진이 ${score}% 보호되었습니다! #ShieldFace #딥페이크차단`;
+      const shareText = `내 사진이 ${score}% 보호되었습니다! #FaceNotFound #딥페이크차단`;
       const file = new File([blob], 'shieldface-result.png', { type: 'image/png' });
 
       // 모바일: 이미지 파일 포함 네이티브 공유
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
-          await navigator.share({ title: 'ShieldFace 결과', text: shareText, files: [file] });
+          await navigator.share({ title: 'FaceNotFound 결과', text: shareText, files: [file] });
           btn.textContent = origText;
           btn.disabled = false;
           return;
@@ -399,7 +399,7 @@ async function shareResult() {
 
   } catch (_) {
     // html2canvas 실패 시 텍스트 복사로 폴백
-    const text = `내 사진이 ${_currentData.protectionScore}% 보호되었습니다! #ShieldFace #딥페이크차단`;
+    const text = `내 사진이 ${_currentData.protectionScore}% 보호되었습니다! #FaceNotFound #딥페이크차단`;
     try { await navigator.clipboard.writeText(text); } catch (__) {}
     btn.textContent = '복사됨!';
     setTimeout(() => { btn.textContent = origText; btn.disabled = false; }, 1800);
