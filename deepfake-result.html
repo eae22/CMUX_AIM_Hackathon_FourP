@@ -699,7 +699,8 @@ const LEVEL_CONFIG = {
 /* ════════════════════════
    Init
    ════════════════════════ */
-let _currentData = RESULT_DATA;
+let _currentData      = RESULT_DATA;
+let _currentRequestId = null;
 
 (function init() {
   renderResult(RESULT_DATA);
@@ -825,6 +826,8 @@ async function fetchProtection(imageB64) {
     const protectedScore = Math.round(
       100 - data.simulation_metrics.deepfake_vulnerability.protected_score
     );
+    _currentRequestId = data.request_id;
+
     renderResult({
       level:            protectedScore >= 70 ? 'safe' : protectedScore >= 40 ? 'warn' : 'danger',
       protectionScore:  protectedScore,
@@ -838,6 +841,8 @@ async function fetchProtection(imageB64) {
       customHeadline:  null,
       customDesc:      null,
     });
+
+    document.getElementById('btn-download').disabled = !_currentRequestId;
     setLoading(false);
   } catch (err) {
     setLoading(false, err.message);
@@ -867,16 +872,15 @@ function resetDemo() {
 }
 
 async function downloadProtected() {
-  const img = document.getElementById('img-protected');
-  if (!img.src || img.style.display === 'none') return;
+  if (!_currentRequestId) return;
 
-  // src → blob 변환 후 a 태그로 다운로드
-  const res   = await fetch(img.src);
-  const blob  = await res.blob();
-  const url   = URL.createObjectURL(blob);
-  const a     = document.createElement('a');
-  a.href      = url;
-  a.download  = 'shieldface_protected.png';
+  // 백엔드 /api/download/{request_id} 에서 직접 파일 수신
+  const res  = await fetch(`${API_BASE_URL}/api/download/${_currentRequestId}`);
+  const blob = await res.blob();
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'shieldface_protected.png';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
