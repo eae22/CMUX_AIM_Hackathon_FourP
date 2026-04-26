@@ -445,6 +445,19 @@
   .btn-download:not(:disabled):hover  { opacity: 0.85; }
   .btn-download:not(:disabled):active { transform: scale(0.97); }
 
+  /* ─── Loading spinner ─── */
+  .loading-spinner {
+    display: inline-block;
+    width: 13px; height: 13px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
   /* ─── Responsive tweaks ─── */
   @media (max-width: 360px) {
     .gauge-wrap { width: 100px; height: 100px; }
@@ -485,6 +498,9 @@ const RESULT_DATA = {
   customHeadline: null,
   customDesc:     null
 };
+
+// ─── 백엔드 URL — 서버 주소 바뀌면 여기만 수정
+const API_BASE_URL = "http://localhost:8000";
 
 /* ── Level configs ─────────────────────────────────────── */
 const LEVEL_CONFIG = {
@@ -681,80 +697,27 @@ const LEVEL_CONFIG = {
 
 <script>
 /* ════════════════════════
-   Render from RESULT_DATA
+   Init
    ════════════════════════ */
+let _currentData = RESULT_DATA;
+
 (function init() {
-  const d    = RESULT_DATA;
-  const cfg  = LEVEL_CONFIG[d.level];
-  const clr  = cfg.color;
+  renderResult(RESULT_DATA);
 
-  /* timestamp */
-  document.getElementById('analyzed-at').textContent = d.analyzedAt;
-
-  /* compare photos */
-  if (d.photo.originalSrc)  showSlot('original',  d.photo.originalSrc);
-  if (d.photo.protectedSrc) showSlot('protected', d.photo.protectedSrc);
-
+  // 원본 업로드 → 백엔드 자동 호출
   document.getElementById('file-original').addEventListener('change', function(e) {
     const file = e.target.files[0];
-    if (file) showSlot('original', URL.createObjectURL(file));
+    if (!file) return;
+    showSlot('original', URL.createObjectURL(file));
+    const reader = new FileReader();
+    reader.onload = ev => fetchProtection(ev.target.result);
+    reader.readAsDataURL(file);
   });
+
+  // 보호본은 수동 업로드도 유지
   document.getElementById('file-protected').addEventListener('change', function(e) {
     const file = e.target.files[0];
     if (file) showSlot('protected', URL.createObjectURL(file));
-  });
-
-  /* badge */
-  const badge = document.getElementById('status-badge');
-  badge.style.background = cfg.dim;
-  badge.style.color = clr;
-  badge.style.border = `1px solid ${clr}40`;
-  document.getElementById('badge-icon').textContent  = cfg.icon;
-  document.getElementById('badge-label').textContent = cfg.label;
-
-  /* status title */
-  document.getElementById('status-title').textContent =
-    d.level === 'safe'   ? '보호 상태 양호' :
-    d.level === 'warn'   ? '보호 수준 보통' : '보호 수준 낮음';
-
-  /* stat reduction */
-  const reduction = d.similarityBefore - d.similarityAfter;
-  document.getElementById('stat-reduction').textContent = `−${reduction}%p`;
-
-  /* gauge animation */
-  const gaugeFill = document.getElementById('gauge-fill');
-  gaugeFill.style.stroke = clr;
-  const circum = 2 * Math.PI * 48; // ≈301.59
-  const target  = circum - (circum * d.protectionScore / 100);
-
-  const pctEl = document.getElementById('gauge-pct');
-  pctEl.style.color = clr;
-
-  setTimeout(() => {
-    gaugeFill.style.strokeDashoffset = target;
-    animateNumber(pctEl, 0, d.protectionScore, 1400);
-  }, 300);
-
-  /* bars */
-  document.getElementById('bar-pct-before').textContent = d.similarityBefore + '%';
-  document.getElementById('bar-pct-after').textContent  = d.similarityAfter  + '%';
-  setTimeout(() => {
-    document.getElementById('bar-before').style.width = d.similarityBefore + '%';
-    document.getElementById('bar-after').style.width  = d.similarityAfter  + '%';
-  }, 500);
-
-  /* AI text */
-  document.getElementById('ai-headline').textContent =
-    d.customHeadline || cfg.headline(d.protectionScore);
-  document.getElementById('ai-desc').textContent =
-    d.customDesc || cfg.desc;
-
-  const tagsEl = document.getElementById('ai-tags');
-  cfg.tags.forEach(t => {
-    const span = document.createElement('span');
-    span.className = 'ai-tag';
-    span.textContent = '#' + t;
-    tagsEl.appendChild(span);
   });
 })();
 
@@ -776,6 +739,127 @@ function animateNumber(el, from, to, duration) {
     if (t < 1) requestAnimationFrame(step);
   }
   requestAnimationFrame(step);
+}
+
+/* ─── renderResult: 데이터 객체로 전체 UI 갱신 ─── */
+function renderResult(d) {
+  _currentData = d;
+  const cfg    = LEVEL_CONFIG[d.level];
+  const clr    = cfg.color;
+  const circum = 2 * Math.PI * 48;
+
+  document.getElementById('analyzed-at').textContent = d.analyzedAt;
+
+  if (d.photo.originalSrc)  showSlot('original',  d.photo.originalSrc);
+  if (d.photo.protectedSrc) showSlot('protected', d.photo.protectedSrc);
+
+  const badge = document.getElementById('status-badge');
+  badge.style.background = cfg.dim;
+  badge.style.color = clr;
+  badge.style.border = `1px solid ${clr}40`;
+  document.getElementById('badge-icon').textContent  = cfg.icon;
+  document.getElementById('badge-label').textContent = cfg.label;
+
+  document.getElementById('status-title').textContent =
+    d.level === 'safe' ? '보호 상태 양호' :
+    d.level === 'warn' ? '보호 수준 보통' : '보호 수준 낮음';
+
+  const redEl = document.getElementById('stat-reduction');
+  redEl.textContent = `−${d.similarityBefore - d.similarityAfter}%p`;
+  redEl.style.color = clr;
+
+  // 게이지 리셋 후 애니메이션
+  const gaugeFill = document.getElementById('gauge-fill');
+  const pctEl     = document.getElementById('gauge-pct');
+  gaugeFill.style.stroke = clr;
+  pctEl.style.color = clr;
+  gaugeFill.style.transition = 'none';
+  gaugeFill.style.strokeDashoffset = circum;
+  pctEl.textContent = '0';
+  setTimeout(() => {
+    gaugeFill.style.transition = 'stroke-dashoffset 1.4s cubic-bezier(0.22, 1, 0.36, 1)';
+    gaugeFill.style.strokeDashoffset = circum - (circum * d.protectionScore / 100);
+    animateNumber(pctEl, 0, d.protectionScore, 1400);
+  }, 80);
+
+  // 막대 리셋 후 애니메이션
+  document.getElementById('bar-pct-before').textContent = d.similarityBefore + '%';
+  document.getElementById('bar-pct-after').textContent  = d.similarityAfter  + '%';
+  const bB = document.getElementById('bar-before');
+  const bA = document.getElementById('bar-after');
+  bB.style.transition = bA.style.transition = 'none';
+  bB.style.width = bA.style.width = '0%';
+  setTimeout(() => {
+    bB.style.transition = bA.style.transition = 'width 1.2s cubic-bezier(0.22, 1, 0.36, 1)';
+    bB.style.width = d.similarityBefore + '%';
+    bA.style.width = d.similarityAfter  + '%';
+  }, 200);
+
+  document.getElementById('ai-headline').textContent = d.customHeadline || cfg.headline(d.protectionScore);
+  document.getElementById('ai-desc').textContent     = d.customDesc     || cfg.desc;
+  const tagsEl = document.getElementById('ai-tags');
+  tagsEl.innerHTML = '';
+  cfg.tags.forEach(t => {
+    const span = document.createElement('span');
+    span.className = 'ai-tag';
+    span.textContent = '#' + t;
+    tagsEl.appendChild(span);
+  });
+}
+
+/* ─── fetchProtection: 원본 업로드 시 백엔드 호출 ─── */
+async function fetchProtection(imageB64) {
+  setLoading(true);
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/protect`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        image_data: { original_base64: imageB64 },
+        parameters: { protection_algorithm: 'FGSM', epsilon: 0.03 }
+      })
+    });
+    if (!res.ok) throw new Error(`서버 오류 ${res.status}`);
+    const data = await res.json();
+
+    const protectedScore = Math.round(
+      100 - data.simulation_metrics.deepfake_vulnerability.protected_score
+    );
+    renderResult({
+      level:            protectedScore >= 70 ? 'safe' : protectedScore >= 40 ? 'warn' : 'danger',
+      protectionScore:  protectedScore,
+      similarityBefore: Math.round(data.simulation_metrics.deepfake_vulnerability.original_score),
+      similarityAfter:  Math.round(data.simulation_metrics.deepfake_vulnerability.protected_score),
+      photo: {
+        originalSrc:  imageB64,
+        protectedSrc: data.protection_result.protected_image_base64,
+      },
+      analyzedAt:      new Date().toLocaleString('ko-KR'),
+      customHeadline:  null,
+      customDesc:      null,
+    });
+    setLoading(false);
+  } catch (err) {
+    setLoading(false, err.message);
+  }
+}
+
+/* ─── setLoading: 로딩/에러 상태 표시 ─── */
+function setLoading(on, errMsg) {
+  const hint   = document.querySelector('.compare-hint');
+  const footer = document.querySelector('.compare-footer span');
+  const dlBtn  = document.getElementById('btn-download');
+  if (on) {
+    hint.innerHTML   = '<span class="loading-spinner"></span> 분석 중…';
+    footer.textContent = '백엔드 처리 중…';
+    dlBtn.disabled   = true;
+  } else if (errMsg) {
+    hint.textContent   = '연결 실패 — 더미 데이터로 표시 중';
+    footer.innerHTML   = `<span style="color:var(--danger)">⚠ ${errMsg}</span>`;
+  } else {
+    hint.textContent   = '탭하여 사진 불러오기';
+    footer.textContent = '육안으로 차이가 거의 없습니다';
+  }
 }
 
 function resetDemo() {
@@ -800,7 +884,7 @@ async function downloadProtected() {
 }
 
 async function shareResult() {
-  const score = RESULT_DATA.protectionScore;
+  const score = _currentData.protectionScore;
   const text  = `내 사진이 ${score}% 보호되었습니다! #ShieldFace #딥페이크차단`;
   const btn   = document.querySelector('.btn-primary');
 
